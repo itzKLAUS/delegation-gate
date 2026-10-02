@@ -1,0 +1,31 @@
+[project]
+name = "delegation-gate"
+version = "0.1.0"
+description = "Signed, attenuated agent delegation with transactional shared quotas"
+requires-python = ">=3.11"
+dependencies = ["cryptography>=44,<52", "pydantic>=2.10,<3"]
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-cov>=6,<8", "ruff>=0.12,<1", "mypy>=1.18,<3", "build>=1,<2"]
+
+[build-system]
+requires = ["hatchling>=1.26,<2"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+extend-exclude = [".venv*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+"examples/*" = ["S101"]
+
+[tool.mypy]
+strict = true
