@@ -1,6 +1,7 @@
 """Verify authority, then atomically charge every ancestor and burn the invocation."""
 
 import hashlib
+import os
 import re
 import secrets
 import sqlite3
@@ -262,6 +263,48 @@ class Gate:
         with self._connect() as db:
             rows = db.execute("SELECT body FROM receipts ORDER BY sequence").fetchall()
         return ("[" + ",".join(row[0] for row in rows) + "]").encode("ascii")
+
+    def receipt_page(self, *, after: int = 0, limit: int = 100) -> tuple[SignedReceipt, ...]:
+        """Bounded, ordered export for trusted operational consumers."""
+        if type(after) is not int or not 0 <= after <= 2**63 - 1:
+            raise ValueError("after must be a nonnegative SQLite integer")
+        if type(limit) is not int or not 1 <= limit <= 1000:
+            raise ValueError("limit must be an integer from 1 to 1000")
+        with self._connect() as db:
+            rows = db.execute(
+                "SELECT body FROM receipts WHERE sequence > ? ORDER BY sequence LIMIT ?",
+                (after, limit),
+            ).fetchall()
+        return tuple(SignedReceipt.model_validate_json(row[0]) for row in rows)
+
+    def grant_status(self, identity: str) -> dict[str, int | bool]:
+        """Local usage and direct revocation only, not a grant authorization check."""
+        if not re.fullmatch(r"[0-9a-f]{64}", identity):
+            raise ValueError("invalid grant identity")
+        with self._connect() as db:
+            db.execute("BEGIN")
+            usage = db.execute("SELECT units FROM usage WHERE grant_id = ?", (identity,)).fetchone()
+            revoked = db.execute("SELECT 1 FROM revoked WHERE grant_id = ?", (identity,)).fetchone()
+        return {"used_units": 0 if usage is None else usage[0], "revoked": revoked is not None}
+
+    def backup(self, destination: str | Path) -> Path:
+        """Online snapshot; never restore stale quotas into an active gateway."""
+        target = Path(destination).resolve()
+        descriptor = os.open(target, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(descriptor)
+        try:
+            with self._connect() as source:
+                snapshot = sqlite3.connect(target)
+                try:
+                    source.backup(snapshot)
+                    if snapshot.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                        raise RuntimeError("Backup integrity check failed")
+                finally:
+                    snapshot.close()
+        except BaseException:
+            target.unlink()
+            raise
+        return target
 
 
 def verify_receipt(receipt_json: bytes, *, key: str, ledger_id: str, audience: str) -> Receipt:
