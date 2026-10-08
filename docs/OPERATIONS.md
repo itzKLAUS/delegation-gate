@@ -19,7 +19,7 @@ The constructor rejects a different receipt key for an existing ledger. Rotation
 
 ## Release checks
 
-Run the locked lint, type, test, demo and build commands from the README. Verify wheel contents and install the wheel in a clean environment. CI contains a Linux/Windows and Python 3.11â€“3.14 matrix, pinned action commits, read-only permissions and disabled persisted checkout credentials. Do not claim that unobserved CI jobs or deployment exercises passed.
+Run the locked lint, type, test, demo and build commands from the README. Verify wheel contents and install the wheel in a clean environment. CI contains a Linux/Windows and Python 3.11–3.14 matrix, pinned action commits, read-only permissions and disabled persisted checkout credentials. Do not claim that unobserved CI jobs or deployment exercises passed.
 
 ## Bounded operational APIs
 
